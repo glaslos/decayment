@@ -1,3 +1,10 @@
+/*
+Copyright 2016 Lukas Rist. All rights reserved.
+Use of this source code is governed by a MIT-style
+license that can be found in the LICENSE file.
+*/
+
+// Package decayment decays counters after not being updated during threshold
 package decayment
 
 import (
@@ -5,15 +12,17 @@ import (
 	"time"
 )
 
-// States engine
+// States to be decayed
 type States struct {
 	sync.Mutex
-	Counts     map[interface{}]int64
+	// Countes per key
+	Counts map[interface{}]int64
+	// Seens keeps last seen per key
 	Seens      map[interface{}]time.Time
 	tickerChan chan struct{}
 }
 
-// New state
+// New state instance
 func New() *States {
 	s := States{
 		Counts:     make(map[interface{}]int64),
