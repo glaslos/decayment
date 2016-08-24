@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/binary"
+	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -17,20 +18,37 @@ func ip2int(ip net.IP) uint32 {
 // States engine
 type States struct {
 	sync.Mutex
-	counts map[uint32]int64
-	seens  map[uint32]time.Time
+	counts     map[uint32]int64
+	seens      map[uint32]time.Time
+	tickerChan chan struct{}
+}
+
+// New state
+func New() *States {
+	s := States{
+		counts:     make(map[uint32]int64),
+		seens:      make(map[uint32]time.Time),
+		tickerChan: make(chan struct{}),
+	}
+	return &s
 }
 
 func (s *States) incr(ip net.IP) error {
+	return s.incrTime(ip, time.Now())
+}
+
+func (s *States) incrTime(ip net.IP, t time.Time) error {
 	s.Lock()
 	defer s.Unlock()
 	intIP := ip2int(ip)
 	s.counts[intIP]++
-	s.seens[intIP] = time.Now()
+	s.seens[intIP] = t
 	return nil
 }
 
 func (s *States) decr() error {
+	s.Lock()
+	defer s.Unlock()
 	for intIP, seen := range s.seens {
 		if time.Since(seen) >= 60*time.Second {
 			s.counts[intIP]--
@@ -43,19 +61,31 @@ func (s *States) decr() error {
 	return nil
 }
 
-func main() {
-	states := new(States)
+func (s *States) start() {
 	ticker := time.NewTicker(5 * time.Second)
-	quit := make(chan struct{})
 	go func() {
 		for {
 			select {
 			case <-ticker.C:
-				states.decr()
-			case <-quit:
+				s.decr()
+			case <-s.tickerChan:
 				ticker.Stop()
 				return
 			}
 		}
 	}()
+}
+
+func (s *States) stop() {
+	close(s.tickerChan)
+}
+
+func main() {
+	states := New()
+	states.start()
+	defer states.stop()
+	states.incr(net.ParseIP("127.0.0.1"))
+	fmt.Println(states)
+	time.Sleep(70 * time.Second)
+	fmt.Println(states)
 }
