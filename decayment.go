@@ -1,8 +1,7 @@
-package main
+package decayment
 
 import (
 	"encoding/binary"
-	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -78,14 +77,4 @@ func (s *States) start() {
 
 func (s *States) stop() {
 	close(s.tickerChan)
-}
-
-func main() {
-	states := New()
-	states.start()
-	defer states.stop()
-	states.incr(net.ParseIP("127.0.0.1"))
-	fmt.Println(states)
-	time.Sleep(70 * time.Second)
-	fmt.Println(states)
 }
