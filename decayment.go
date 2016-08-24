@@ -47,19 +47,21 @@ func (s *States) IncrTime(key interface{}, t time.Time) error {
 }
 
 // Decr decrements all keys if seen below threshold*time.Second
-func (s *States) Decr(threshold int) error {
+func (s *States) Decr(threshold int) (uint32, error) {
 	s.Lock()
 	defer s.Unlock()
+	count := new(uint32)
 	for intIP, seen := range s.Seens {
 		if time.Since(seen) >= time.Duration(threshold)*time.Second {
 			s.Counts[intIP]--
 			if s.Counts[intIP] <= 0 {
+				*count++
 				delete(s.Counts, intIP)
 				delete(s.Seens, intIP)
 			}
 		}
 	}
-	return nil
+	return *count, nil
 }
 
 // Start starts the decrement loop with interval*time.Second and threshold*time.Second

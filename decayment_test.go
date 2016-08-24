@@ -48,7 +48,7 @@ func ExampleIncrementTime() {
 
 func TestDecrement(t *testing.T) {
 	states := New()
-	err := states.Decr(1)
+	_, err := states.Decr(1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -60,8 +60,8 @@ func ExampleDecrement() {
 	states := New()
 	key := "127.0.0.1"
 	err := states.IncrTime("127.0.0.1", then)
-	err = states.Decr(1)
-	if err == nil && states.Counts[key] == 0 {
+	count, err := states.Decr(1)
+	if err == nil && states.Counts[key] == 0 && count == 1 {
 		fmt.Println("olleh")
 	}
 	// Output: olleh
@@ -75,11 +75,11 @@ func TestTrueDecrement(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	err = states.Decr(1)
+	count, err := states.Decr(1)
 	if err != nil {
 		t.Error(err)
 	}
-	if len(states.Counts) != 0 || len(states.Seens) != 0 {
+	if len(states.Counts) != 0 || len(states.Seens) != 0 && count != 1 {
 		t.Error("state not properly decremented")
 	}
 }
