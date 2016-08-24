@@ -1,72 +1,66 @@
 package decayment
 
 import (
-	"encoding/binary"
-	"net"
 	"sync"
 	"time"
 )
 
-func ip2int(ip net.IP) uint32 {
-	if len(ip) == 16 {
-		return binary.BigEndian.Uint32(ip[12:16])
-	}
-	return binary.BigEndian.Uint32(ip)
-}
-
 // States engine
 type States struct {
 	sync.Mutex
-	counts     map[uint32]int64
-	seens      map[uint32]time.Time
+	Counts     map[interface{}]int64
+	Seens      map[interface{}]time.Time
 	tickerChan chan struct{}
 }
 
 // New state
 func New() *States {
 	s := States{
-		counts:     make(map[uint32]int64),
-		seens:      make(map[uint32]time.Time),
+		Counts:     make(map[interface{}]int64),
+		Seens:      make(map[interface{}]time.Time),
 		tickerChan: make(chan struct{}),
 	}
 	return &s
 }
 
-func (s *States) incr(ip net.IP) error {
-	return s.incrTime(ip, time.Now())
+// Incr increments parameter key by one setting seen to now
+func (s *States) Incr(key interface{}) error {
+	return s.IncrTime(key, time.Now())
 }
 
-func (s *States) incrTime(ip net.IP, t time.Time) error {
+// IncrTime increments parameter key by one setting seen to parameter t
+func (s *States) IncrTime(key interface{}, t time.Time) error {
 	s.Lock()
 	defer s.Unlock()
-	intIP := ip2int(ip)
-	s.counts[intIP]++
-	s.seens[intIP] = t
+	s.Counts[key]++
+	s.Seens[key] = t
 	return nil
 }
 
-func (s *States) decr() error {
+// Decr decrements all keys if seen below threshold*time.Second
+func (s *States) Decr(threshold int) error {
 	s.Lock()
 	defer s.Unlock()
-	for intIP, seen := range s.seens {
-		if time.Since(seen) >= 60*time.Second {
-			s.counts[intIP]--
-			if s.counts[intIP] <= 0 {
-				delete(s.counts, intIP)
-				delete(s.seens, intIP)
+	for intIP, seen := range s.Seens {
+		if time.Since(seen) >= time.Duration(threshold)*time.Second {
+			s.Counts[intIP]--
+			if s.Counts[intIP] <= 0 {
+				delete(s.Counts, intIP)
+				delete(s.Seens, intIP)
 			}
 		}
 	}
 	return nil
 }
 
-func (s *States) start() {
-	ticker := time.NewTicker(5 * time.Second)
+// Start starts the decrement loop with interval*time.Second and threshold*time.Second
+func (s *States) Start(interval int, threshold int) {
+	ticker := time.NewTicker(time.Duration(interval) * time.Second)
 	go func() {
 		for {
 			select {
 			case <-ticker.C:
-				s.decr()
+				s.Decr(threshold)
 			case <-s.tickerChan:
 				ticker.Stop()
 				return
@@ -75,6 +69,7 @@ func (s *States) start() {
 	}()
 }
 
-func (s *States) stop() {
+// Stop stops the decrement loop
+func (s *States) Stop() {
 	close(s.tickerChan)
 }

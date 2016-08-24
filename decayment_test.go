@@ -1,7 +1,6 @@
 package decayment
 
 import (
-	"net"
 	"testing"
 	"time"
 )
@@ -12,7 +11,7 @@ func TestCreate(t *testing.T) {
 
 func TestIncrement(t *testing.T) {
 	states := New()
-	err := states.incr(net.ParseIP("127.0.0.1"))
+	err := states.Incr("127.0.0.1")
 	if err != nil {
 		t.Error(err)
 	}
@@ -20,7 +19,7 @@ func TestIncrement(t *testing.T) {
 
 func TestIncrementTime(t *testing.T) {
 	states := New()
-	err := states.incrTime(net.ParseIP("127.0.0.1"), time.Now())
+	err := states.IncrTime("127.0.0.1", time.Now())
 	if err != nil {
 		t.Error(err)
 	}
@@ -28,7 +27,7 @@ func TestIncrementTime(t *testing.T) {
 
 func TestDecrement(t *testing.T) {
 	states := New()
-	err := states.decr()
+	err := states.Decr(1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -36,17 +35,17 @@ func TestDecrement(t *testing.T) {
 
 func TestTrueDecrement(t *testing.T) {
 	now := time.Now()
-	then := now.Add(-61 * time.Second)
+	then := now.Add(-2 * time.Second)
 	states := New()
-	err := states.incrTime(net.ParseIP("127.0.0.1"), then)
+	err := states.IncrTime("127.0.0.1", then)
 	if err != nil {
 		t.Error(err)
 	}
-	err = states.decr()
+	err = states.Decr(1)
 	if err != nil {
 		t.Error(err)
 	}
-	if len(states.counts) != 0 || len(states.seens) != 0 {
+	if len(states.Counts) != 0 || len(states.Seens) != 0 {
 		t.Error("state not properly decremented")
 	}
 }
