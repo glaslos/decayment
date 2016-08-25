@@ -110,3 +110,30 @@ func BenchmarkDecr(b *testing.B) {
 		states.Decr(1)
 	}
 }
+
+func TestEncode(t *testing.T) {
+	states := New()
+	states.Incr("127.0.0.1")
+	_, err := states.Encode()
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func TestDecode(t *testing.T) {
+	key := "127.0.0.1"
+	states1 := New()
+	states1.Incr(key)
+	b, err := states1.Encode()
+	if err != nil {
+		t.Error(err)
+	}
+	states2 := New()
+	err = states2.Decode(b)
+	if err != nil {
+		t.Error(err)
+	}
+	if states2.Counts[key] != 1 {
+		t.Error("Expecting states2.Counts[key] == 1")
+	}
+}

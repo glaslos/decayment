@@ -8,13 +8,15 @@ license that can be found in the LICENSE file.
 package decayment
 
 import (
+	"bytes"
+	"encoding/gob"
 	"sync"
 	"time"
 )
 
 // States to be decayed
 type States struct {
-	sync.Mutex
+	lock sync.Mutex
 	// Countes per key
 	Counts map[interface{}]int64
 	// Seens keeps last seen per key
@@ -35,6 +37,16 @@ func New() *States {
 // Incr increments parameter key by one setting seen to now
 func (s *States) Incr(key interface{}) error {
 	return s.IncrTime(key, time.Now())
+}
+
+// Lock the states
+func (s *States) Lock() {
+	s.lock.Lock()
+}
+
+// Unlock the states
+func (s *States) Unlock() {
+	s.lock.Unlock()
 }
 
 // IncrTime increments parameter key by one setting seen to parameter t
@@ -85,4 +97,26 @@ func (s *States) Start(interval int, threshold int) {
 // Stop stops the decrement loop
 func (s *States) Stop() {
 	close(s.tickerChan)
+}
+
+// Encode the state as a byte array
+func (s *States) Encode() ([]byte, error) {
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(s)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// Decode the state from a byte array
+func (s *States) Decode(b []byte) error {
+	buf := bytes.NewReader(b)
+	dec := gob.NewDecoder(buf)
+	err := dec.Decode(&s)
+	if err != nil {
+		return err
+	}
+	return nil
 }
