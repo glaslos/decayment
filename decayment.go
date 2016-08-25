@@ -38,6 +38,7 @@ func (s *States) Incr(key interface{}) error {
 }
 
 // IncrTime increments parameter key by one setting seen to parameter t
+// Used for testing to increment a key in the past
 func (s *States) IncrTime(key interface{}, t time.Time) error {
 	s.Lock()
 	defer s.Unlock()
@@ -64,7 +65,8 @@ func (s *States) Decr(threshold int) (uint32, error) {
 	return *count, nil
 }
 
-// Start starts the decrement loop with interval*time.Second and threshold*time.Second
+// Start starts the decrementing loop with interval*time.Second
+// and threshold*time.Second
 func (s *States) Start(interval int, threshold int) {
 	ticker := time.NewTicker(time.Duration(interval) * time.Second)
 	go func() {

@@ -2,6 +2,7 @@ package decayment
 
 import (
 	"fmt"
+	"math/rand"
 	"testing"
 	"time"
 )
@@ -81,5 +82,31 @@ func TestTrueDecrement(t *testing.T) {
 	}
 	if len(states.Counts) != 0 || len(states.Seens) != 0 && count != 1 {
 		t.Error("state not properly decremented")
+	}
+}
+
+func TestStartStop(t *testing.T) {
+	states := New()
+	states.Start(1, 1)
+	states.Stop()
+}
+
+func BenchmarkIncr(b *testing.B) {
+	states := New()
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		states.Incr("127.0.0.1")
+	}
+}
+
+func BenchmarkDecr(b *testing.B) {
+	states := New()
+	now := time.Now()
+	for n := 0; n < 1000; n++ {
+		states.IncrTime(rand.Int63(), now.Add(time.Duration(rand.Intn(100))*time.Second))
+	}
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		states.Decr(1)
 	}
 }
