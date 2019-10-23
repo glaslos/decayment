@@ -65,8 +65,10 @@ func (s *States) Decr(threshold int) (uint32, error) {
 	defer s.Unlock()
 	count := new(uint32)
 	for intIP, seen := range s.Seens {
-		if time.Since(seen) >= time.Duration(threshold)*time.Second {
-			s.Counts[intIP]--
+		interval := (time.Duration(threshold) * time.Second).Seconds()
+		seenSince := int64(time.Since(seen).Seconds() / interval)
+		if seenSince >= 1 {
+			s.Counts[intIP] = s.Counts[intIP] - seenSince
 			if s.Counts[intIP] <= 0 {
 				*count++
 				delete(s.Counts, intIP)
@@ -81,6 +83,7 @@ func (s *States) Decr(threshold int) (uint32, error) {
 // and threshold*time.Second
 func (s *States) Start(interval int, threshold int) {
 	ticker := time.NewTicker(time.Duration(interval) * time.Second)
+	s.Decr(threshold)
 	go func() {
 		for {
 			select {
