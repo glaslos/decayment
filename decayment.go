@@ -104,10 +104,11 @@ func (s *States) Stop() {
 
 // Encode the state as a byte array
 func (s *States) Encode() ([]byte, error) {
+	s.Lock()
+	defer s.Unlock()
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
-	err := enc.Encode(s)
-	if err != nil {
+	if err := enc.Encode(s); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
@@ -115,11 +116,9 @@ func (s *States) Encode() ([]byte, error) {
 
 // Decode the state from a byte array
 func (s *States) Decode(b []byte) error {
+	s.Lock()
+	defer s.Unlock()
 	buf := bytes.NewReader(b)
 	dec := gob.NewDecoder(buf)
-	err := dec.Decode(&s)
-	if err != nil {
-		return err
-	}
-	return nil
+	return dec.Decode(&s)
 }

@@ -19,7 +19,7 @@ func TestIncrement(t *testing.T) {
 	}
 }
 
-func ExampleIncrement() {
+func ExampleStates_Incr() {
 	states := New()
 	key := "127.0.0.1"
 	err := states.Incr(key)
@@ -37,7 +37,7 @@ func TestIncrementTime(t *testing.T) {
 	}
 }
 
-func ExampleIncrementTime() {
+func ExampleStates_IncrTime() {
 	states := New()
 	key := "127.0.0.1"
 	err := states.IncrTime(key, time.Now())
@@ -55,7 +55,7 @@ func TestDecrement(t *testing.T) {
 	}
 }
 
-func ExampleDecrement() {
+func ExampleStates_Decr() {
 	now := time.Now()
 	then := now.Add(-2 * time.Second)
 	states := New()
