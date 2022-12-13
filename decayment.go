@@ -10,72 +10,67 @@ package decayment
 import (
 	"bytes"
 	"encoding/gob"
-	"sync"
 	"time"
+
+	"github.com/puzpuzpuz/xsync/v2"
 )
 
 // States to be decayed
 type States struct {
-	lock sync.Mutex
-	// Countes per key
-	Counts map[interface{}]int64
-	// Seens keeps last seen per key
-	Seens      map[interface{}]time.Time
+	Counts     *xsync.MapOf[string, int]
+	Seens      *xsync.MapOf[string, time.Time]
 	tickerChan chan struct{}
 }
 
 // New state instance
 func New() *States {
 	s := States{
-		Counts:     make(map[interface{}]int64),
-		Seens:      make(map[interface{}]time.Time),
+		Counts:     xsync.NewMapOf[int](),
+		Seens:      xsync.NewMapOf[time.Time](),
 		tickerChan: make(chan struct{}),
 	}
 	return &s
 }
 
 // Incr increments parameter key by one setting seen to now
-func (s *States) Incr(key interface{}) error {
+func (s *States) Incr(key string) error {
 	return s.IncrTime(key, time.Now())
-}
-
-// Lock the states
-func (s *States) Lock() {
-	s.lock.Lock()
-}
-
-// Unlock the states
-func (s *States) Unlock() {
-	s.lock.Unlock()
 }
 
 // IncrTime increments parameter key by one setting seen to parameter t
 // Used for testing to increment a key in the past
-func (s *States) IncrTime(key interface{}, t time.Time) error {
-	s.Lock()
-	defer s.Unlock()
-	s.Counts[key]++
-	s.Seens[key] = t
+func (s *States) IncrTime(key string, t time.Time) error {
+	s.Counts.Compute(key, func(oldValue int, loaded bool) (newValue int, delete bool) {
+		// loaded is true here.
+		newValue = oldValue + 1
+		delete = false
+		return
+	})
+	s.Seens.Store(key, t)
 	return nil
 }
 
 // Decr decrements all keys if seen below threshold*time.Second
 func (s *States) Decr(threshold int) (uint32, error) {
-	s.Lock()
-	defer s.Unlock()
 	count := new(uint32)
-	for intIP, seen := range s.Seens {
+	s.Seens.Range(func(key string, seen time.Time) bool {
 		interval := (time.Duration(threshold) * time.Second).Seconds()
-		seenSince := int64(time.Since(seen).Seconds() / interval)
+		seenSince := int(time.Since(seen).Seconds() / interval)
 		if seenSince >= 1 {
-			s.Counts[intIP] = s.Counts[intIP] - seenSince
-			if s.Counts[intIP] <= 0 {
-				*count++
-				delete(s.Counts, intIP)
-				delete(s.Seens, intIP)
-			}
+			s.Counts.Compute(key, func(oldValue int, loaded bool) (newValue int, delete bool) {
+				// loaded is true here.
+				delete = false
+				newValue = oldValue - seenSince
+				if newValue <= 0 {
+					*count++
+					s.Seens.Delete(key)
+					delete = true
+				}
+				return
+			})
 		}
-	}
+		return false
+	})
 	return *count, nil
 }
 
@@ -104,8 +99,6 @@ func (s *States) Stop() {
 
 // Encode the state as a byte array
 func (s *States) Encode() ([]byte, error) {
-	s.Lock()
-	defer s.Unlock()
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
 	if err := enc.Encode(s); err != nil {
@@ -116,8 +109,6 @@ func (s *States) Encode() ([]byte, error) {
 
 // Decode the state from a byte array
 func (s *States) Decode(b []byte) error {
-	s.Lock()
-	defer s.Unlock()
 	buf := bytes.NewReader(b)
 	dec := gob.NewDecoder(buf)
 	return dec.Decode(&s)

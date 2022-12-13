@@ -22,8 +22,8 @@ func TestIncrement(t *testing.T) {
 func ExampleStates_Incr() {
 	states := New()
 	key := "127.0.0.1"
-	err := states.Incr(key)
-	if err == nil && states.Counts[key] == 1 {
+	_ = states.Incr(key)
+	if v, ok := states.Counts.Load(key); ok && v == 1 {
 		fmt.Println("olleh")
 	}
 	// Output: olleh
@@ -40,8 +40,8 @@ func TestIncrementTime(t *testing.T) {
 func ExampleStates_IncrTime() {
 	states := New()
 	key := "127.0.0.1"
-	err := states.IncrTime(key, time.Now())
-	if err == nil && states.Counts[key] == 1 {
+	_ = states.IncrTime(key, time.Now())
+	if v, ok := states.Counts.Load(key); ok && v == 1 {
 		fmt.Println("olleh")
 	}
 	// Output: olleh
@@ -60,9 +60,9 @@ func ExampleStates_Decr() {
 	then := now.Add(-2 * time.Second)
 	states := New()
 	key := "127.0.0.1"
-	err := states.IncrTime("127.0.0.1", then)
-	count, err := states.Decr(1)
-	if err == nil && states.Counts[key] == 0 && count == 1 {
+	_ = states.IncrTime("127.0.0.1", then)
+	count, _ := states.Decr(1)
+	if v, ok := states.Counts.Load(key); ok && v == 0 && count == 1 {
 		fmt.Println("olleh")
 	}
 	// Output: olleh
@@ -80,7 +80,7 @@ func TestTrueDecrement(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if len(states.Counts) != 0 || len(states.Seens) != 0 && count != 1 {
+	if states.Counts.Size() != 0 || states.Seens.Size() != 0 && count != 1 {
 		t.Error("state not properly decremented")
 	}
 }
@@ -103,7 +103,7 @@ func BenchmarkDecr(b *testing.B) {
 	states := New()
 	now := time.Now()
 	for n := 0; n < 1000; n++ {
-		states.IncrTime(rand.Int63(), now.Add(time.Duration(rand.Intn(100))*time.Second))
+		states.IncrTime(fmt.Sprintf("%d", rand.Int63()), now.Add(time.Duration(rand.Intn(100))*time.Second))
 	}
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
@@ -133,7 +133,7 @@ func TestDecode(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if states2.Counts[key] != 1 {
+	if v, ok := states2.Counts.Load(key); !ok && v != 1 {
 		t.Error("Expecting states2.Counts[key] == 1")
 	}
 }
